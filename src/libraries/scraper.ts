@@ -33,46 +33,28 @@ export const crawler = async (year: string) => {
     console.log("Apakah ada tag article?", !!testNode);
   }
 
-  const months = dom?.querySelectorAll('#main article ul')
+  // Cari semua blok bulan
+  const monthBlocks = dom.querySelectorAll('.kalender-indo');
 
-  if (!months) {
-    throw new Error('Failed to parse DOM')
-  }
+  return Array.from(monthBlocks).flatMap((block) => {
+    // Ambil nama bulan dari judul link
+    const monthTitle = block.querySelector('.kal-title-link')?.textContent.trim(); 
+    // Contoh: "Januari 2026"
+    
+    // Ambil list libur di bawahnya
+    const holidayItems = block.querySelectorAll('.kal-libur-list li');
 
-  return Array.from(months).flatMap((item) => {
-    const [monthName, year] = item
-      .querySelector<HTMLAnchorElement>('li:first-child a')
-      ?.getAttribute('href')
-      ?.split('-') || []
+    return Array.from(holidayItems).map((li) => {
+      const dayText = li.querySelector('.kal-libur-day')?.textContent.trim();
+      const nameText = li.textContent.replace(dayText || '', '').trim();
 
-    const month = MONTH_NAME[monthName as keyof typeof MONTH_NAME]
-
-    return Array.from(
-      item.querySelectorAll('li:last-child table tr'),
-    )
-      .flatMap((holiday) => {
-        const day = holiday.querySelector<HTMLTableCellElement>('td:first-child')?.textContent.trim()
-        const name = holiday.querySelector<HTMLTableCellElement>('td:last-child')?.textContent.trim() as string
-
-        if (day && day.includes('-')) {
-          const split = day.split('-', 2)
-          const start = Number(split[0])
-          const end = Number(split[1])
-
-          return Array.from({ length: end - start + 1 })
-            .fill(start)
-            .flatMap((value, index) => {
-              return {
-                date: `${year}-${month}-${(Number(value) + index).toString().padStart(2, '0')}`,
-                name,
-              }
-            })
-        }
-
-        return {
-          date: `${year}-${month}-${day?.padStart(2, '0')}`,
-          name,
-        }
-      })
-  })
+      return {
+        date: dayText, // Perlu logic split jika rentang seperti "21-22"
+        month: monthTitle,
+        name: nameText,
+        // Deteksi Cuti Bersama dari class atau teks
+        is_cuti_bersama: nameText.toLowerCase().includes("cuti bersama")
+      };
+    });
+  });
 }
