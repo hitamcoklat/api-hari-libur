@@ -17,6 +17,8 @@ export const crawler = async (year: string) => {
 
   const dom = new DOMParser().parseFromString(html, 'text/html')
 
+  console.log('checkDOM', dom)
+
   const months = dom?.querySelectorAll('#main article ul')
 
   if (!months) {
