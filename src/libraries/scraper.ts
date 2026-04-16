@@ -3,7 +3,7 @@ import { DOMParser } from '@b-fuze/deno-dom'
 import { MONTH_NAME } from '@/constants/month.ts'
 
 const fetcher = async (year: string) => {
-  const response = await fetch(`https://www.tanggalan.com/${year}`)
+  const response = await fetch(`https://www.tanggalans.com/kalender-${year}`)
 
   if (!response.ok) {
     throw new Error('Failed to fetch tanggalan')
