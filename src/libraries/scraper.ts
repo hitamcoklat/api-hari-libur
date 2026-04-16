@@ -23,38 +23,49 @@ const fetcher = async (year: string) => {
 
 export const crawler = async (year: string) => {
   const html = await fetcher(year);
-  console.log("HTML terambil, karakter pertama:", html.substring(0, 100)); // Cek apakah HTML-nya beneran ada
-
   const dom = new DOMParser().parseFromString(html, 'text/html');
-  if (!dom) {
-    console.error("DOM Gagal di parse!");
-  } else {
-    const testNode = dom.querySelector('article');
-    console.log("Apakah ada tag article?", !!testNode);
-  }
 
-  // Cari semua blok bulan
+  if (!dom) throw new Error('Failed to parse DOM');
+
+  console.log('Sample Element:', dom.querySelector('.kal-title-link')?.outerHTML);
+
+  // Selector yang lebih akurat berdasarkan HTML tanggalans.com
   const monthBlocks = dom.querySelectorAll('.kalender-indo');
 
   return Array.from(monthBlocks).flatMap((block) => {
-    // Ambil nama bulan dari judul link
-    const monthTitle = block.querySelector('.kal-title-link')?.textContent.trim(); 
-    // Contoh: "Januari 2026"
-    
-    // Ambil list libur di bawahnya
-    const holidayItems = block.querySelectorAll('.kal-libur-list li');
+    // Ambil nama bulan (misal: "Januari 2026")
+    const monthTitle = block.querySelector('.kal-title-link')?.textContent.trim() || "";
+    const monthName = monthTitle.split(' ')[0];
+    const month = MONTH_NAME[monthName as keyof typeof MONTH_NAME];
 
-    return Array.from(holidayItems).map((li) => {
-      const dayText = li.querySelector('.kal-libur-day')?.textContent.trim();
-      const nameText = li.textContent.replace(dayText || '', '').trim();
+    // Ambil daftar libur di dalam blok bulan tersebut
+    const holidays = block.querySelectorAll('.kal-libur-list li');
+
+    return Array.from(holidays).flatMap((holiday) => {
+      const dayNode = holiday.querySelector('.kal-libur-day');
+      const dayRaw = dayNode?.textContent.trim() || "";
+      
+      // Ambil nama libur dengan menghapus teks tanggalnya
+      const name = holiday.textContent.replace(dayRaw, '').trim();
+      
+      // Deteksi Cuti Bersama
+      const isCutiBersama = name.toLowerCase().includes("cuti bersama");
+
+      // Logic untuk menangani rentang tanggal (misal: "21-22")
+      if (dayRaw.includes('-')) {
+        const [start, end] = dayRaw.split('-').map(Number);
+        return Array.from({ length: end - start + 1 }, (_, i) => ({
+          date: `${year}-${month}-${(start + i).toString().padStart(2, '0')}`,
+          name: name,
+          type: isCutiBersama ? "Cuti Bersama" : "Libur Nasional"
+        }));
+      }
 
       return {
-        date: dayText, // Perlu logic split jika rentang seperti "21-22"
-        month: monthTitle,
-        name: nameText,
-        // Deteksi Cuti Bersama dari class atau teks
-        is_cuti_bersama: nameText.toLowerCase().includes("cuti bersama")
+        date: `${year}-${month}-${dayRaw.padStart(2, '0')}`,
+        name: name,
+        type: isCutiBersama ? "Cuti Bersama" : "Libur Nasional"
       };
     });
   });
-}
+};
